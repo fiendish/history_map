@@ -82,22 +82,21 @@
             layer.bindPopup(feature.properties['name_as_written']);
         },
         pointToLayer: function (feature, latlng) {
-            var icon = feature.properties['icon'] ? feature.properties['icon'] : 'blue.png'; // default to blue
-            if (icon !== 'none') {
-                return L.marker(
-                    latlng,
-                    {
-                        icon:L.icon({
-                            iconUrl: icon, // default to blue.png
-                            shadowUrl: 'shadow.png',
-                            iconSize: [25,41],
-                            shadowSize:   [41, 41],
-                            shadowAnchor: [13, 41],
-                            iconAnchor: [13,41]
-                        })
-                    }
-                );
-            }
+            var ico = feature.properties['icon'] ? feature.properties['icon'] : 'blue.png'; // default to blue
+            return L.marker(
+                latlng,
+                {
+                    icon:L.icon({
+                        iconUrl: ico,
+                        shadowUrl: 'shadow.png',
+                        iconSize: [25,41],
+                        shadowSize:   [41, 41],
+                        shadowAnchor: [13, 41],
+                        iconAnchor: [13,41]
+                    }),
+                    opacity: ico == 'none' ? 0 : 100
+                }
+            );
         }
     }
 
@@ -115,7 +114,7 @@
         var line = csv2geojson.toLine(this.toGeoJSON());
 //        this.addData(turf.bezier(line.features[0], null, 0.4));
         this.addData(line);
-        this.setStyle({color: rainbow(5, ++i)});
+        this.setStyle({color: rainbow(6, ++i)});
 
         all_layers.addLayer(this);
 
@@ -134,6 +133,7 @@
         'La Brillane (3)': omnivore.csv('data3.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
         'Souillac (4)': omnivore.csv('data4.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
         "d'Entrecasteaux (5)": omnivore.csv('data5.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        "Conway (6)": omnivore.csv('data6.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
         'Boats (LOL)': all_boats
     }
     L.control.layers(baselayers, overlays).addTo(map);
