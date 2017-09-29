@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>leaflet-map-csv</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+
+    <!-- leaflet.js -->
+    <link   rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+        integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+        crossorigin=""/>
+    <script   src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+        integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+        crossorigin=""></script>
+
+    <!-- Use leaflet-omnivore for the csv file to geojson conversion -->
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/leaflet-omnivore/0.3.4/leaflet-omnivore.min.js'></script>
+
+    <!-- csv2geojson will convert collections of points to linestrings -->
+    <script src='https://npmcdn.com/csv2geojson@5.0.2/csv2geojson.js'></script>
+
+    <!-- easy access to basemap providers -->
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/leaflet-providers/1.1.17/leaflet-providers.min.js'></script>
+
+    <!-- Full window -->
+    <style>
+    body { margin:0; padding:0; }
+    #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+    </style>
+
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+
+    var map = L.map(
+        'map',
+        {
+            scrollWheelZoom: true
+        }
+    );
+
+    var baselayers = {
+        'Gray': L.tileLayer(
+            'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
+            {
+                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attribution">CARTO</a>'
+            }
+        ).addTo(map),
+        'Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
+        'None': L.tileLayer('')
+    };
+
+    var layerStyle = {
+        onEachFeature: function(feature, layer) {
+            layer.bindPopup(feature.properties['name_as_written']);
+        },
+        pointToLayer: function (feature, latlng) {
+            var icon = feature.properties['icon'] ? feature.properties['icon'] : 'blue.png'; // default to blue
+
+            if (icon !== 'none') {
+                return L.marker(
+                    latlng,
+                    {
+                        icon:L.icon({
+                            iconUrl: icon, // default to blue.png
+                            shadowUrl: 'shadow.png',
+                            iconSize: [25,41],
+                            shadowSize:   [41, 41],
+                            shadowAnchor: [13, 20]
+                        })
+                    }
+                );
+            }
+        }
+    }
+
+    var all_layers = L.featureGroup();
+
+    var connectDots = function() {
+        this.addData(csv2geojson.toLine(this.toGeoJSON()));
+        this.addTo(map);
+        all_layers.addLayer(this);
+        map.fitBounds(all_layers.getBounds());
+    }
+
+    overlays = {
+        'Chevalier de Ternay 1': omnivore.csv('data1.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+    }
+    L.control.layers(baselayers, overlays).addTo(map);
+</script>
+</body>
+</html>
