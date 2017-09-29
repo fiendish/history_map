@@ -22,12 +22,16 @@
     <!-- easy access to basemap providers -->
     <script src='https://cdnjs.cloudflare.com/ajax/libs/leaflet-providers/1.1.17/leaflet-providers.min.js'></script>
 
+    <!-- bezier curvature -->
+    <script src='https://npmcdn.com/@turf/turf@4.7.3/turf.js'></script>
+
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/leaflet.AnimatedMarker/1.0.0/AnimatedMarker.js'></script>
+
     <!-- Full window -->
     <style>
-    body { margin:0; padding:0; }
-    #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+        body { margin:0; padding:0; }
+        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
     </style>
-
 </head>
 <body>
     <div id="map"></div>
@@ -52,6 +56,27 @@
         'None': L.tileLayer('')
     };
 
+    function rainbow(numOfSteps, step) {
+        // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
+        // Adam Cole, 2011-Sept-14
+        // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
+        var r, g, b;
+        var h = step / numOfSteps;
+        var i = ~~(h * 6);
+        var f = h * 6 - i;
+        var q = 1 - f;
+        switch(i % 6){
+            case 0: r = 1; g = f; b = 0; break;
+            case 1: r = q; g = 1; b = 0; break;
+            case 2: r = 0; g = 1; b = f; break;
+            case 3: r = 0; g = q; b = 1; break;
+            case 4: r = f; g = 0; b = 1; break;
+            case 5: r = 1; g = 0; b = q; break;
+        }
+        var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
+        return (c);
+    }
+
     var layerStyle = {
         onEachFeature: function(feature, layer) {
             layer.bindPopup(feature.properties['name_as_written']);
@@ -68,7 +93,8 @@
                             shadowUrl: 'shadow.png',
                             iconSize: [25,41],
                             shadowSize:   [41, 41],
-                            shadowAnchor: [13, 20]
+                            shadowAnchor: [13, 41],
+                            iconAnchor: [13,41]
                         })
                     }
                 );
@@ -76,17 +102,40 @@
         }
     }
 
-    var all_layers = L.featureGroup();
+    var all_layers = L.featureGroup().addTo(map);
+    var all_boats = L.featureGroup().addTo(map);
+
+    var boatIcon = L.icon({
+        iconUrl: 'boat-48.png',
+        iconAnchor: [24, 48]
+    });
+
+    var i = 0;
 
     var connectDots = function() {
-        this.addData(csv2geojson.toLine(this.toGeoJSON()));
-        this.addTo(map);
+        var line = csv2geojson.toLine(this.toGeoJSON());
+//        this.addData(turf.bezier(line.features[0], null, 0.4));
+        this.addData(line);
+        this.setStyle({color: rainbow(5, ++i)});
+
         all_layers.addLayer(this);
+
         map.fitBounds(all_layers.getBounds());
+
+        var boat = L.animatedMarker(
+            L.GeoJSON.coordsToLatLngs(line.features[0].geometry.coordinates),
+            {
+                icon: boatIcon,
+            }
+        ).addTo(all_boats);
     }
 
     overlays = {
-        'Chevalier de Ternay 1': omnivore.csv('data1.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        'Chevalier de Ternay (2)': omnivore.csv('data2.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        'La Brillane (3)': omnivore.csv('data3.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        'Souillac (4)': omnivore.csv('data4.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        "d'Entrecasteaux (5)": omnivore.csv('data5.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'}, L.geoJson(null, layerStyle)).on('ready', connectDots),
+        'Boats (LOL)': all_boats
     }
     L.control.layers(baselayers, overlays).addTo(map);
 </script>
