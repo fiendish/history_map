@@ -83,7 +83,6 @@
         },
         pointToLayer: function (feature, latlng) {
             var icon = feature.properties['icon'] ? feature.properties['icon'] : 'blue.png'; // default to blue
-
             if (icon !== 'none') {
                 return L.marker(
                     latlng,
