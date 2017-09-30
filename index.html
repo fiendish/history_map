@@ -26,10 +26,15 @@
 
     <script src="Leaflet.Geodesic.js"></script>
 
+    <!--
+    <script src="leaflet.browser.print.js"></script>
+    -->
+
     <!-- Full window -->
     <style>
         body { margin:0; padding:0; }
         #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+        .leaflet-control-layers-expanded .leaflet-control-layers-list { font-size: 14pt }
     </style>
 </head>
 <body>
@@ -37,27 +42,48 @@
 
     <script>
 
+    function change_class_style(classname, which_style, what_value) {
+        var elements = document.getElementsByClassName(classname);
+        for (var i = 0; i < elements.length; i++ ) {
+            elements[i].style[which_style] = what_value;
+        }
+    }
+
+    function background_style(event) {
+        if (event.layer._url === '') {
+            change_class_style('leaflet-container', 'background-color', 'rgb(0,0,0)');
+        } else {
+            change_class_style('leaflet-container', 'background-color', 'rgb(177,177,177)');
+        }
+    }
+
     var map = L.map(
         'map',
         {
-            scrollWheelZoom: true
+            scrollWheelZoom: true,
+            preferCanvas: true,
+            zoomDelta: 0.5,
+            zoomSnap: 0.5,
+            renderer: L.canvas()
         }
-    );
+    ).on('baselayerchange ', background_style);
+
+    //L.browserPrint().addTo(map);
 
     var baselayers = {
-        'Gray': L.tileLayer(
-            'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png',
-            {
-                noWrap: false,
-                attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, &copy; <a href="https://carto.com/attribution">CARTO</a>'
-            }
-        ).addTo(map),
-        'Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
-        'None': L.tileLayer('')
+        'Stamen.Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
+        'Stamen.TonerLite': L.tileLayer.provider('Stamen.TonerLite'),
+        'Stamen.TonerBackground': L.tileLayer.provider('Stamen.TonerBackground'),
+        'Stamen.TerrainBackground': L.tileLayer.provider('Stamen.TerrainBackground'),
+        'Esri.WorldTerrain': L.tileLayer.provider('Esri.WorldTerrain'),
+        'Esri.WorldGrayCanvas': L.tileLayer.provider('Esri.WorldGrayCanvas'),
+        'CartoDB.DarkMatterNoLabels': L.tileLayer.provider('CartoDB.DarkMatterNoLabels').addTo(map),
+        'None - Solid Black': L.tileLayer('')
     };
 
     var step = 0;
     function rainbow(numOfSteps) {
+        // https://stackoverflow.com/a/7419630/421010
         // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
         // Adam Cole, 2011-Sept-14
         // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
@@ -78,6 +104,10 @@
         return (c);
     }
 
+    var draw_icons = false;
+    var draw_lines = true;
+    var draw_boats = true;
+
     var layerStyle = {
         onEachFeature: function(feature, layer) {
             layer.bindPopup(feature.properties['name_as_written']);
@@ -89,26 +119,33 @@
             });
         },
         pointToLayer: function (feature, latlng) {
-            var ifile = feature.properties['icon'];
-            var ico = (!ifile || (ifile =='none')) ? 'blue.png' : ifile // default to blue
-            return L.marker(
-                latlng,
-                {
-                    icon:L.icon({
-                        iconUrl: ico,
-                        shadowUrl: 'shadow.png',
-                        iconSize: [25,41],
-                        shadowSize:   [41, 41],
-                        shadowAnchor: [13, 41],
-                        iconAnchor: [13,41]
-                    }),
-                    opacity: ifile == 'none' ? 0 : 100
-                }
-            );
+            if (draw_icons) {
+                var ifile = feature.properties['icon'];
+                var ico = (!ifile || (ifile =='none')) ? 'blue.png' : ifile // default to blue...
+                return L.marker(
+                    latlng,
+                    {
+                        icon:L.icon({
+                            iconUrl: ico,
+                            shadowUrl: 'shadow.png',
+                            iconSize: [25,41],
+                            shadowSize:   [41, 41],
+                            shadowAnchor: [13, 41],
+                            iconAnchor: [13,41]
+                        }),
+                        opacity: ifile == 'none' ? 0 : 100  //... but 'none' means no icon
+                    }
+                );
+            } else {
+                return L.circleMarker(latlng, {
+                    radius: 3
+                });
+            }
         }
     }
 
-    var all_layers = L.featureGroup().addTo(map);
+    var all_markers = L.featureGroup().addTo(map);
+    var all_lines = L.featureGroup().addTo(map);
     var all_boats = L.featureGroup().addTo(map);
 
     var boatIcon = L.icon({
@@ -116,36 +153,48 @@
         iconAnchor: [24, 48]
     });
 
-    var geolatlngs, geocurve, path;
     var connectDots = function() {
-        path = csv2geojson.toLine(this.toGeoJSON()); // geojson object
-        geolatlngs = L.GeoJSON.coordsToLatLngs(path.features[0].geometry.coordinates); // array of latlng objects
-        geopolyline = L.geodesic(
-            [geolatlngs],
+        // uniquely color each layer
+        var layer_color = rainbow(data_files.length);
+
+        // convert marker points to a single connected path
+        var path = csv2geojson.toLine(this.toGeoJSON());
+
+        // convert connecting segments to great circle routes
+        var geopolyline = L.geodesic(
+            [L.GeoJSON.coordsToLatLngs(path.features[0].geometry.coordinates)], // input is path's coordinates as an array of LatLngs
             {
-                weight: 7,
-                opacity: 0.5,
-                color: 'blue',
-                steps: 50
+                steps: 50,
+                wrap: false,
+                color: layer_color,
+                opacity: 0.5
             }
         );
-        this.addData(geopolyline.toGeoJSON());
-//        this.addData(path);
-        this.setStyle({color: rainbow(data_files.length)});
 
-        all_layers.addLayer(this);
+        this.setStyle({color: layer_color});
 
-        map.fitBounds(all_layers.getBounds());
+        this.addTo(all_markers);
 
-        var boat = L.Marker.movingMarker(
-            geopolyline.getLatLngs()[0],
-            geopolyline.getLatLngs()[0].length*100,
-            {
-                autostart: true,
-                icon: boatIcon,
-                onEnd: function() { this.stop(); this.start(); }
-             }
-        ).addTo(all_boats);
+        if (draw_lines) {
+            // this.addData(path);
+            all_lines.addLayer(geopolyline);
+            map.fitBounds(all_lines.getBounds());
+        } else {
+            map.fitBounds(all_markers.getBounds());
+        }
+
+        // moving boat icons
+        if (draw_boats) {
+            L.Marker.movingMarker(
+                geopolyline.getLatLngs()[0],
+                geopolyline.getLatLngs()[0].length*100,
+                {
+                    autostart: true,
+                    icon: boatIcon,
+                    onEnd: function() { this.stop(); this.start(); }
+                }
+            ).addTo(all_boats);
+        }
     }
 
     var data_files = [
@@ -170,7 +219,13 @@
         ).on('ready', connectDots);
     }
 
-    overlays['Boats (LOL)'] = all_boats;
+    if (draw_lines) {
+        overlays['-- Connecting Lines --'] = all_lines;
+    }
+
+    if (draw_boats) {
+        overlays['Boats 🤣🤣🤣 (LOL)'] = all_boats;
+    }
 
     L.control.layers(baselayers, overlays).addTo(map);
 </script>
