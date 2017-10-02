@@ -28,8 +28,6 @@
 
     <script src='leaflet.geometryutil.js'></script>
 
-    <script src='leaflet.circle.topolygon-src.js'></script>
-
     <script type='text/javascript' src='simplified_routes.json'></script>
 
     <script
@@ -78,9 +76,9 @@
             zoomSnap: 0.5,
             renderer: L.canvas()
         }
-    ).on('baselayerchange ', background_style).on('mousemove', movemouse).on('load', addcircle);
+    ).on('baselayerchange ', background_style).on('mousemove', movemouse).on('load', add_horse);
 
-    function addcircle() {
+    function add_horse() {
         // var center = new L.LatLng(-20.2832694, 57.59758);
 		// var Geodesic3 = L.geodesic([], {
 		// 	weight:3,
@@ -136,14 +134,14 @@
     //L.browserPrint().addTo(map);
 
     var baselayers = {
-        'Stamen.Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
+ //       'Stamen.Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
         'Stamen.TonerLite': L.tileLayer.provider('Stamen.TonerLite'),
         'Stamen.TonerBackground': L.tileLayer.provider('Stamen.TonerBackground'),
         'Stamen.TerrainBackground': L.tileLayer.provider('Stamen.TerrainBackground'),
         'Esri.WorldTerrain': L.tileLayer.provider('Esri.WorldTerrain'),
         'Esri.WorldGrayCanvas': L.tileLayer.provider('Esri.WorldGrayCanvas'),
         'CartoDB.DarkMatterNoLabels': L.tileLayer.provider('CartoDB.DarkMatterNoLabels').addTo(map),
-        'None - Solid Black': L.tileLayer('')
+        ' None - Solid Black': L.tileLayer('')
     };
 
     var step = 0;
@@ -325,8 +323,39 @@
         ['Decaen (8)', 'data8.csv'],
         ['Beauvais (9)', 'data9.csv']
     ]
+    var layer_order = [];
+    for (var i = 0; i < data_files.length; i++) {
+        layer_order.push(data_files[i][0]);
+    }
 
-    var layercontrol = L.control.layers(baselayers).addTo(map);
+    function sortOverlays(layerA, layerB, nameA, nameB) {
+        indexA = layer_order.indexOf(nameA);
+        indexB = layer_order.indexOf(nameB);
+        if (indexA < 0 && indexB >= 0) {
+            return 1;
+        }
+        if (indexB < 0 && indexA >= 0) {
+            return -1;
+        }
+        if (indexA >= 0 && indexB >= 0) {
+            return indexA - indexB;
+        }
+        if (nameA < nameB) {
+            return -1;
+        }
+        if (nameA > nameB) {
+            return 1;
+        }
+        return 0;
+    }
+
+    var layercontrol = L.control.layers(baselayers,null,
+        {
+            hideSingleBase: true,
+            sortLayers: true,
+            sortFunction: sortOverlays
+        }
+    ).addTo(map);
 
     var overlays = {}
     for (var i = 0; i < data_files.length; i++) {
@@ -342,10 +371,12 @@
     }
 
     if (draw_lines) {
+        overlays['-- Connecting Lines --'] = all_lines;
         layercontrol.addOverlay(all_lines, '-- Connecting Lines --')
     }
 
     if (draw_boats) {
+        overlays['Boats'] = all_boats;
         layercontrol.addOverlay(all_boats, 'Boats')
     }
 
