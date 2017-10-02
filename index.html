@@ -26,6 +26,8 @@
 
     <script src='Leaflet.Geodesic.js'></script>
 
+    <script src='leaflet.geometryutil.js'></script>
+
     <script type='text/javascript' src='simplified_routes.json'></script>
 
     <!--
@@ -73,7 +75,19 @@
             zoomSnap: 0.5,
             renderer: L.canvas()
         }
-    ).on('baselayerchange ', background_style);
+    ).on('baselayerchange ', background_style).on('mousemove', movemouse);
+
+    var last_closest = null;
+    function movemouse(e) {
+        var closest = L.GeometryUtil.closestLayerSnap(map,  all_markers.getLayers(), e.latlng, 50, true);
+        if (!closest || (closest.layer != last_closest)) {
+            map.closePopup();
+        }
+        if (closest) {
+            last_closest = closest.layer;
+            last_closest.openPopup();
+        }
+    }
 
     //L.browserPrint().addTo(map);
 
@@ -112,17 +126,12 @@
     }
 
     function format_coords(latlng) {
-        console.log(latlng)
         return 'Lat: '+latlng.lat + ', ' + 'Lon: '+ latlng.lng
     }
 
-    var markerStyle = {
+    var smallMarkerStyle = {
         onEachFeature: function(feature, layer) {
             layer.bindPopup(feature.properties['name_as_written'] + '<br>' + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]));
-            layer.on('mouseover', function (e) {
-                map.closePopup();
-                this.openPopup();
-            });
         },
         pointToLayer: function (feature, latlng) {
             if (draw_icons) {
@@ -144,7 +153,10 @@
                 );
             } else {
                 return L.circleMarker(latlng, {
-                    radius: 4
+                    radius: 4,
+                    weight: 8,
+                    opacity: 0.2,
+                    fillOpacity: 1
                 });
             }
         },
@@ -274,7 +286,7 @@
         overlays[file_name] = omnivore.csv(
             file_path,
             {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'},
-            L.geoJson(null, markerStyle)
+            L.geoJson(null, smallMarkerStyle)
         ).on('ready', connectDots.bind(overlays[file_name], file_name));
     }
 
