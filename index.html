@@ -30,7 +30,6 @@
 
     <script type='text/javascript' src='simplified_routes.json'></script>
 
-    <script
     <!--
     <script src='leaflet.browser.print.js'></script>
     -->
@@ -50,7 +49,8 @@
     var draw_icons = false;
     var draw_lines = true;
     var draw_boats = true;
-
+    var lines_switch = '-- Connecting Lines --';
+    var lines_on = draw_lines;
 
     function change_class_style(classname, which_style, what_value) {
         var elements = document.getElementsByClassName(classname);
@@ -76,7 +76,46 @@
             zoomSnap: 0.5,
             renderer: L.canvas()
         }
-    ).on('baselayerchange ', background_style).on('mousemove', movemouse).on('load', add_horse);
+    )
+    .on('baselayerchange ', background_style)
+    .on('mousemove', movemouse)
+    .on('load', add_horse)
+    .on('overlayadd', overlay_activated)
+    .on('overlayremove', overlay_deactivated);
+
+    function overlay_deactivated(e) {
+        name = e.name;
+        layer = e.layer;
+        if (name in line_overlays) {
+            delete active_overlays[name];
+
+            var line_layer = line_overlays[name];
+            all_lines.removeLayer(line_layer);
+        } else if (name == lines_switch) {
+            lines_on = false;
+        }
+    }
+
+    var active_overlays = {}
+
+    function overlay_activated(e) {
+        name = e.name;
+        layer = e.layer;
+        if (name in line_overlays) {
+            active_overlays[name] = layer;
+
+            var line_layer = line_overlays[name];
+            if (lines_on) {
+                all_lines.addLayer(line_layer);
+            }
+        } else if (name == lines_switch) {
+            lines_on = true;
+
+            for (var overlay_name in active_overlays) {
+                all_lines.addLayer(line_overlays[overlay_name]);
+            }
+        }
+    }
 
     function add_horse() {
         // var center = new L.LatLng(-20.2832694, 57.59758);
@@ -210,7 +249,7 @@
 
     var all_markers = L.featureGroup().addTo(map);
     var all_lines = L.featureGroup().addTo(map);
-    var all_routes = L.layerGroup().addTo(map);
+    // var all_routes = L.layerGroup().addTo(map);
     var all_boats = L.featureGroup();
 
     var horseIcon = L.icon({
@@ -235,11 +274,10 @@
         );
     }
 
-    var blacklist_into = ['Toulon, France'];
-    var blacklist_both = ['Fort Ticonderoga', 'Schuyler Island', 'Camp de Phalsbourg', 'Wasselonne', 'Mayence', 'Budenheim', 'Mombach'];
+    var line_overlays = {}
 
     var connectDots = function(file_name, e) {
-        var thisroute = L.layerGroup();
+        // var thisroute = L.layerGroup();
 
         // uniquely color each layer
         var layer_color = rainbow(data_files.length);
@@ -284,12 +322,14 @@
         if (draw_lines) {
             all_lines.addLayer(geopolyline);
 
-            thisroute.addLayer(e.target);
-            thisroute.addLayer(geopolyline);
+            line_overlays[file_name] = geopolyline;
 
-            thisroute.addTo(all_routes);
+            // thisroute.addLayer(e.target);
+            // thisroute.addLayer(geopolyline);
 
-            layercontrol.addOverlay(thisroute, file_name)
+            // thisroute.addTo(all_routes);
+
+            layercontrol.addOverlay(e.target, file_name)
 
             map.fitBounds(all_lines.getBounds());
         } else {
@@ -357,26 +397,24 @@
         }
     ).addTo(map);
 
-    var overlays = {}
+    var data_overlays = {}
     for (var i = 0; i < data_files.length; i++) {
         var file = data_files[i];
         var file_name = file[0];
         var file_path = file[1];
 
-        overlays[file_name] = omnivore.csv(
+        data_overlays[file_name] = omnivore.csv(
             file_path,
             {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'},
             L.geoJson(null, smallMarkerStyle)
-        ).on('ready', connectDots.bind(overlays[file_name], file_name));
+        ).on('ready', connectDots.bind(data_overlays[file_name], file_name));
     }
 
     if (draw_lines) {
-        overlays['-- Connecting Lines --'] = all_lines;
-        layercontrol.addOverlay(all_lines, '-- Connecting Lines --')
+        layercontrol.addOverlay(all_lines, lines_switch)
     }
 
     if (draw_boats) {
-        overlays['Boats'] = all_boats;
         layercontrol.addOverlay(all_boats, 'Boats')
     }
 
