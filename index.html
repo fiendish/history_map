@@ -111,14 +111,17 @@
         return (c);
     }
 
+    function format_coords(latlng) {
+        console.log(latlng)
+        return 'Lat: '+latlng.lat + ', ' + 'Lon: '+ latlng.lng
+    }
+
     var markerStyle = {
         onEachFeature: function(feature, layer) {
-            layer.bindPopup(feature.properties['name_as_written']);
+            layer.bindPopup(feature.properties['name_as_written'] + '<br>' + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]));
             layer.on('mouseover', function (e) {
+                map.closePopup();
                 this.openPopup();
-            });
-            layer.on('mouseout', function (e) {
-                this.closePopup();
             });
         },
         pointToLayer: function (feature, latlng) {
