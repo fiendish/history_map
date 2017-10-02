@@ -131,7 +131,11 @@
 
     var smallMarkerStyle = {
         onEachFeature: function(feature, layer) {
-            layer.bindPopup(feature.properties['name_as_written'] + '<br>' + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]));
+            var name = feature.properties['name_as_written'];
+            if (name.startsWith('(cut)')) {
+                name = name.slice(5);
+            }
+            layer.bindPopup(name + '<br>' + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]));
         },
         pointToLayer: function (feature, latlng) {
             if (draw_icons) {
@@ -165,7 +169,7 @@
     var all_markers = L.featureGroup().addTo(map);
     var all_lines = L.featureGroup().addTo(map);
     var all_routes = L.layerGroup().addTo(map);
-    var all_boats = L.featureGroup().addTo(map);
+    var all_boats = L.featureGroup();
 
     var boatIcon = L.icon({
         iconUrl: 'boat-48.png',
@@ -185,7 +189,7 @@
     }
 
     var blacklist_into = ['Toulon, France'];
-    var blacklist_both = ['Fort Ticonderoga', 'Schuyler Island', 'Camp de Phalsbourg', 'wasselonne', 'Mayence', 'Budenheim', 'Mombach'];
+    var blacklist_both = ['Fort Ticonderoga', 'Schuyler Island', 'Camp de Phalsbourg', 'Wasselonne', 'Mayence', 'Budenheim', 'Mombach'];
 
     var connectDots = function(file_name, e) {
         var thisroute = L.layerGroup();
@@ -213,16 +217,14 @@
 
             new_latlngs.push(start);
 
-            if (blacklist_into.indexOf(names[i+1].trim()) < 0)
+            if (!names[i+1].startsWith('(cut)'))
             {
-                if ((blacklist_both.indexOf(names[i].trim()) < 0) && (blacklist_both.indexOf(names[i+1].trim()) < 0))
-                {
-                    var route_key = start_lat + ':' + start_lng + ':' + end_lat + ':' + end_lng;
-                    if (simplified_routes.hasOwnProperty(route_key)) {
-                        new_latlngs = new_latlngs.concat(simplified_routes[route_key]['route']);
-                    }
+                var route_key = start_lat + ':' + start_lng + ':' + end_lat + ':' + end_lng;
+                if (simplified_routes.hasOwnProperty(route_key)) {
+                    new_latlngs = new_latlngs.concat(simplified_routes[route_key]['route']);
                 }
             }
+
             new_latlngs.push(end);
         }
 
@@ -298,6 +300,26 @@
         layercontrol.addOverlay(all_boats, 'Boats 🤣🤣🤣 (LOL)')
     }
 
+
+    var circle = L.geodesic([], {
+			weight:3,
+			opacity:1,
+			color: 'green',
+			steps: 40
+        });
+
+    circle.createCircle(new L.LatLng(-20.2832694, 57.5975875), 2000000).addTo(map);
+/*
+   L.Marker.movingMarker(
+        circle.getLatLngs(),
+        circle.getLatLngs().length*100,
+        {
+            autostart: true,
+            icon: 'horse-48.png',
+            onEnd: function() { this.stop(); this.start(); }
+        }
+    ).addTo(map);
+*/
 </script>
 </body>
 </html>
