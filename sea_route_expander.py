@@ -4,6 +4,14 @@ from time import sleep
 import csv
 import json
 import codecs
+from simplify import simplify
+
+
+def get(url_base, payload):
+    r = requests.get(url_base, params=payload)
+    print(r.request.url)
+    return r.json()
+
 
 routes = {}
 data_files = []
@@ -47,29 +55,32 @@ for data_file in data_files:
         )
 
         payload = {
-            'transshipmentFactor': '10', 'streetFactor': '5',
-            'blockedAreasCsv': '23%2C11%2C35%2C13%2C17', 'type': 'graph',
-            'avoidInland': 'true',
+            'speed': '10',
+            'transshipmentFactor': '10',
+            'streetFactor': '5',
+            'avoidedTwCountriesCsv': '',
+            'avoidInland': 'false',
+            'unblockedAreasCsv': '',
+            'blockedAreasCsv': '23,11,35,13,17',
+            'type': 'graph',
             'multiRoute': 'false'
         }
 
         try:
-            sleep(5)
-            rj = requests.get(url_base, params=payload).json()
+            sleep(3)
+            rj = get(url_base, payload)
             routes[route_name] = rj['getRouteJson']
         except:
+            print("FAILED")
             payload['multiRoute'] = 'true'
-            sleep(5)
-            rj = requests.get(url_base, params=payload).json()
+            sleep(3)
+            rj = get(url_base, payload)
             if rj.get('getRouteJson'):
                 routes[route_name] = rj['getRouteJson']
             else:
-                payload['avoidInland'] = 'false'
-                sleep(5)
-                rj = requests.get(url_base, params=payload).json()
-                routes[route_name] = rj
+                print("FAILED!!!")
 
-        print(routes[route_name])
+#        print(routes[route_name])
 
 with open('all_routes.json', 'w') as outfile:
     json.dump(routes, outfile, sort_keys=True)
@@ -87,7 +98,7 @@ for index, data in sorted(jf.items()):
         for segment in data:
             route_time += segment['journeytime']
             segpts = segment['routepoints']
-            route = [{'lat': pt['lat'], 'lon': pt['lon']} for pt in segpts]
+            route = [{'lat': pt['lat'], 'lng': pt['lon']} for pt in segpts]
             new_route += route
 
         if len(new_route) > 0:
@@ -95,3 +106,25 @@ for index, data in sorted(jf.items()):
 
 with open('compact_routes.json', 'w') as ofile:
     json.dump(new_data, ofile)
+
+
+# Now simplify the routes
+
+with open('compact_routes.json', 'r') as f:
+    crj = json.load(f)
+
+new_routes = {}
+
+for identifier, route in crj.items():
+    new_route = simplify(route['route'], tolerance=0.05)
+
+    print(
+        len(route['route']), '->', len(new_route)
+    )
+
+    route['route'] = new_route
+
+with open('simplified_routes.json', 'w') as of:
+    of.write('var simplified_routes = ')
+    json.dump(crj, of, indent='  ')
+    of.write(';')

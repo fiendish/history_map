@@ -44,6 +44,11 @@
 
     <script>
 
+    var draw_icons = false;
+    var draw_lines = true;
+    var draw_boats = true;
+
+
     function change_class_style(classname, which_style, what_value) {
         var elements = document.getElementsByClassName(classname);
         for (var i = 0; i < elements.length; i++ ) {
@@ -106,10 +111,6 @@
         return (c);
     }
 
-    var draw_icons = false;
-    var draw_lines = true;
-    var draw_boats = false;
-
     var markerStyle = {
         onEachFeature: function(feature, layer) {
             layer.bindPopup(feature.properties['name_as_written']);
@@ -148,7 +149,7 @@
 
     var all_markers = L.featureGroup().addTo(map);
     var all_lines = L.featureGroup().addTo(map);
-    var all_routes = L.featureGroup().addTo(map);
+    var all_routes = L.layerGroup().addTo(map);
     var all_boats = L.featureGroup().addTo(map);
 
     var boatIcon = L.icon({
@@ -168,17 +169,18 @@
         );
     }
 
+    var blacklist_into = ['Toulon, France'];
     var blacklist_both = ['Fort Ticonderoga', 'Schuyler Island', 'Camp de Phalsbourg', 'wasselonne', 'Mayence', 'Budenheim', 'Mombach'];
 
-    var connectDots = function() {
-        var thisroute = L.featureGroup();
+    var connectDots = function(file_name, e) {
+        var thisroute = L.layerGroup();
 
         // uniquely color each layer
         var layer_color = rainbow(data_files.length);
-        this.addTo(all_markers);
+        e.target.addTo(all_markers);
 
         // convert separate geojson points to a single connected path
-        var path = csv2geojson.toLine(this.toGeoJSON(100));
+        var path = csv2geojson.toLine(e.target.toGeoJSON(100));
         var latlngs = L.GeoJSON.coordsToLatLngs(
             path.features[0].geometry.coordinates
         );
@@ -196,14 +198,16 @@
 
             new_latlngs.push(start);
 
-            if ((blacklist_both.indexOf(names[i].trim()) < 0) && (blacklist_both.indexOf(names[i+1].trim()) < 0))
+            if (blacklist_into.indexOf(names[i+1].trim()) < 0)
             {
-                var route_key = start_lat + ':' + start_lng + ':' + end_lat + ':' + end_lng;
-                if (simplified_routes.hasOwnProperty(route_key)) {
-                    new_latlngs = new_latlngs.concat(simplified_routes[route_key]['route']);
+                if ((blacklist_both.indexOf(names[i].trim()) < 0) && (blacklist_both.indexOf(names[i+1].trim()) < 0))
+                {
+                    var route_key = start_lat + ':' + start_lng + ':' + end_lat + ':' + end_lng;
+                    if (simplified_routes.hasOwnProperty(route_key)) {
+                        new_latlngs = new_latlngs.concat(simplified_routes[route_key]['route']);
+                    }
                 }
             }
-
             new_latlngs.push(end);
         }
 
@@ -214,25 +218,27 @@
         var geopolyline = L.polyline(new_latlngs, {color: layer_color});
 
         if (draw_lines) {
-//        this.addData(geopolyline.toGeoJSON());
             all_lines.addLayer(geopolyline);
 
-            thisroute.addLayer(this);
+            thisroute.addLayer(e.target);
             thisroute.addLayer(geopolyline);
+
             thisroute.addTo(all_routes);
+
+            layercontrol.addOverlay(thisroute, file_name)
 
             map.fitBounds(all_lines.getBounds());
         } else {
             map.fitBounds(all_markers.getBounds());
         }
 
-        this.setStyle({color: layer_color});
+        e.target.setStyle({color: layer_color});
 
         // moving boat icons
         if (draw_boats) {
             L.Marker.movingMarker(
-                geopolyline.getLatLngs()[0],
-                geopolyline.getLatLngs()[0].length*100,
+                geopolyline.getLatLngs(),
+                geopolyline.getLatLngs().length*100,
                 {
                     autostart: true,
                     icon: boatIcon,
@@ -243,15 +249,18 @@
     }
 
     var data_files = [
+        ['DesRoches (1)', 'data1.csv'],
         ['Chevalier de Ternay (2)', 'data2.csv'],
         ['La Brillane (3)', 'data3.csv'],
         ['Souillac (4)', 'data4.csv'],
         ["d'Entrecasteaux (5)", 'data5.csv'],
         ['Conway (6)', 'data6.csv'],
         ['Malartic (7)', 'data7.csv'],
-        ['Decarn (8)', 'data8.csv'],
+        ['Decaen (8)', 'data8.csv'],
         ['Beauvais (9)', 'data9.csv']
     ]
+
+    var layercontrol = L.control.layers(baselayers).addTo(map);
 
     var overlays = {}
     for (var i = 0; i < data_files.length; i++) {
@@ -263,18 +272,17 @@
             file_path,
             {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'},
             L.geoJson(null, markerStyle)
-        ).on('ready', connectDots);
+        ).on('ready', connectDots.bind(overlays[file_name], file_name));
     }
 
     if (draw_lines) {
-        overlays['-- Connecting Lines --'] = all_lines;
+        layercontrol.addOverlay(all_lines, '-- Connecting Lines --')
     }
 
     if (draw_boats) {
-        overlays['Boats 🤣🤣🤣 (LOL)'] = all_boats;
+        layercontrol.addOverlay(all_boats, 'Boats 🤣🤣🤣 (LOL)')
     }
 
-    L.control.layers(baselayers, overlays).addTo(map);
 </script>
 </body>
 </html>
