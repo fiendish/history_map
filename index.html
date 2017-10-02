@@ -2,16 +2,16 @@
 <html>
 <head>
     <title>leaflet-map-csv</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta charset="utf-8">
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta charset='utf-8'>
 
     <!-- leaflet.js -->
-    <link   rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
-        integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
-        crossorigin=""/>
-    <script   src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
-        integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
-        crossorigin=""></script>
+    <link   rel='stylesheet' href='https://unpkg.com/leaflet@1.2.0/dist/leaflet.css'
+        integrity='sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=='
+        crossorigin=''/>
+    <script   src='https://unpkg.com/leaflet@1.2.0/dist/leaflet.js'
+        integrity='sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=='
+        crossorigin=''></script>
 
     <!-- Use leaflet-omnivore for the dsv file to GeoJSON conversion -->
     <script src='leaflet-omnivore.min.js'></script>
@@ -24,10 +24,12 @@
 
     <script src='MovingMarker.js'></script>
 
-    <script src="Leaflet.Geodesic.js"></script>
+    <script src='Leaflet.Geodesic.js'></script>
+
+    <script type='text/javascript' src='simplified_routes.json'></script>
 
     <!--
-    <script src="leaflet.browser.print.js"></script>
+    <script src='leaflet.browser.print.js'></script>
     -->
 
     <!-- Full window -->
@@ -38,7 +40,7 @@
     </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id='map'></div>
 
     <script>
 
@@ -84,7 +86,7 @@
     var step = 0;
     function rainbow(numOfSteps) {
         // https://stackoverflow.com/a/7419630/421010
-        // This function generates vibrant, "evenly spaced" colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
+        // This function generates vibrant, 'evenly spaced' colours (i.e. no clustering). This is ideal for creating easily distinguishable vibrant markers in Google Maps and other apps.
         // Adam Cole, 2011-Sept-14
         // HSV to RBG adapted from: http://mjijackson.com/2008/02/rgb-to-hsl-and-rgb-to-hsv-color-model-conversion-algorithms-in-javascript
         var r, g, b;
@@ -100,15 +102,15 @@
             case 4: r = f; g = 0; b = 1; break;
             case 5: r = 1; g = 0; b = q; break;
         }
-        var c = "#" + ("00" + (~ ~(r * 255)).toString(16)).slice(-2) + ("00" + (~ ~(g * 255)).toString(16)).slice(-2) + ("00" + (~ ~(b * 255)).toString(16)).slice(-2);
+        var c = '#' + ('00' + (~ ~(r * 255)).toString(16)).slice(-2) + ('00' + (~ ~(g * 255)).toString(16)).slice(-2) + ('00' + (~ ~(b * 255)).toString(16)).slice(-2);
         return (c);
     }
 
     var draw_icons = false;
     var draw_lines = true;
-    var draw_boats = true;
+    var draw_boats = false;
 
-    var layerStyle = {
+    var markerStyle = {
         onEachFeature: function(feature, layer) {
             layer.bindPopup(feature.properties['name_as_written']);
             layer.on('mouseover', function (e) {
@@ -138,14 +140,15 @@
                 );
             } else {
                 return L.circleMarker(latlng, {
-                    radius: 3
+                    radius: 4
                 });
             }
-        }
+        },
     }
 
     var all_markers = L.featureGroup().addTo(map);
     var all_lines = L.featureGroup().addTo(map);
+    var all_routes = L.featureGroup().addTo(map);
     var all_boats = L.featureGroup().addTo(map);
 
     var boatIcon = L.icon({
@@ -153,35 +156,77 @@
         iconAnchor: [24, 48]
     });
 
-    var connectDots = function() {
-        // uniquely color each layer
-        var layer_color = rainbow(data_files.length);
-
-        // convert marker points to a single connected path
-        var path = csv2geojson.toLine(this.toGeoJSON());
-
-        // convert connecting segments to great circle routes
-        var geopolyline = L.geodesic(
-            [L.GeoJSON.coordsToLatLngs(path.features[0].geometry.coordinates)], // input is path's coordinates as an array of LatLngs
+    function getGeodesicPolyline(latlngs) {
+         // input is path's coordinates as an array of LatLngs
+        return L.geodesic(
+            [latlngs],
             {
-                steps: 50,
+                steps: 10000,
                 wrap: false,
-                color: layer_color,
                 opacity: 0.5
             }
         );
+    }
 
-        this.setStyle({color: layer_color});
+    var blacklist_both = ['Fort Ticonderoga', 'Schuyler Island', 'Camp de Phalsbourg', 'wasselonne', 'Mayence', 'Budenheim', 'Mombach'];
 
+    var connectDots = function() {
+        var thisroute = L.featureGroup();
+
+        // uniquely color each layer
+        var layer_color = rainbow(data_files.length);
         this.addTo(all_markers);
 
+        // convert separate geojson points to a single connected path
+        var path = csv2geojson.toLine(this.toGeoJSON(100));
+        var latlngs = L.GeoJSON.coordsToLatLngs(
+            path.features[0].geometry.coordinates
+        );
+
+        var names = path.features[0].properties.name_as_written;
+
+        var new_latlngs = [];
+        for (var i = 0; i < latlngs.length-1; i++) {
+            start = latlngs[i];
+            end = latlngs[i+1];
+            start_lat = start['lat'].toFixed(5);
+            start_lng = start['lng'].toFixed(5);
+            end_lat = end['lat'].toFixed(5);
+            end_lng = end['lng'].toFixed(5);
+
+            new_latlngs.push(start);
+
+            if ((blacklist_both.indexOf(names[i].trim()) < 0) && (blacklist_both.indexOf(names[i+1].trim()) < 0))
+            {
+                var route_key = start_lat + ':' + start_lng + ':' + end_lat + ':' + end_lng;
+                if (simplified_routes.hasOwnProperty(route_key)) {
+                    new_latlngs = new_latlngs.concat(simplified_routes[route_key]['route']);
+                }
+            }
+
+            new_latlngs.push(end);
+        }
+
+        // // convert connecting segments to great circle routes
+        // var geopolyline = getGeodesicPolyline(latlngs);
+        // geopolyline.setStyle({color: layer_color});
+
+        var geopolyline = L.polyline(new_latlngs, {color: layer_color});
+
         if (draw_lines) {
-            // this.addData(path);
+//        this.addData(geopolyline.toGeoJSON());
             all_lines.addLayer(geopolyline);
+
+            thisroute.addLayer(this);
+            thisroute.addLayer(geopolyline);
+            thisroute.addTo(all_routes);
+
             map.fitBounds(all_lines.getBounds());
         } else {
             map.fitBounds(all_markers.getBounds());
         }
+
+        this.setStyle({color: layer_color});
 
         // moving boat icons
         if (draw_boats) {
@@ -202,9 +247,10 @@
         ['La Brillane (3)', 'data3.csv'],
         ['Souillac (4)', 'data4.csv'],
         ["d'Entrecasteaux (5)", 'data5.csv'],
-        ["Conway (6)", 'data6.csv'],
-        ["Malartic (7)", 'data7.csv'],
-        ["Decarn (8)", 'data8.csv']
+        ['Conway (6)', 'data6.csv'],
+        ['Malartic (7)', 'data7.csv'],
+        ['Decarn (8)', 'data8.csv'],
+        ['Beauvais (9)', 'data9.csv']
     ]
 
     var overlays = {}
@@ -212,10 +258,11 @@
         var file = data_files[i];
         var file_name = file[0];
         var file_path = file[1];
+
         overlays[file_name] = omnivore.csv(
             file_path,
             {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'},
-            L.geoJson(null, layerStyle)
+            L.geoJson(null, markerStyle)
         ).on('ready', connectDots);
     }
 
