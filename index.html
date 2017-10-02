@@ -28,8 +28,11 @@
 
     <script src='leaflet.geometryutil.js'></script>
 
+    <script src='leaflet.circle.topolygon-src.js'></script>
+
     <script type='text/javascript' src='simplified_routes.json'></script>
 
+    <script
     <!--
     <script src='leaflet.browser.print.js'></script>
     -->
@@ -75,7 +78,48 @@
             zoomSnap: 0.5,
             renderer: L.canvas()
         }
-    ).on('baselayerchange ', background_style).on('mousemove', movemouse);
+    ).on('baselayerchange ', background_style).on('mousemove', movemouse).on('load', addcircle);
+
+    function addcircle() {
+        // var center = new L.LatLng(-20.2832694, 57.59758);
+		// var Geodesic3 = L.geodesic([], {
+		// 	weight:3,
+		// 	opacity:1,
+		// 	color: 'green',
+		// 	steps: 40
+		// }).addTo(map);
+        // Geodesic3.createCircle(center, 20000);
+
+        var latlngs = [
+            [-20.229986, 57.7565002],
+            [-20.331106, 57.7338409],
+            [-20.375527, 57.6741028],
+            [-20.431517, 57.6892090],
+            [-20.483628, 57.5848390],
+            [-20.473979, 57.4056244],
+            [-20.361365, 57.3973846],
+            [-20.200346, 57.4440765],
+            [-20.157165, 57.5285339],
+            [-20.073345, 57.5402069],
+            [-20.016581, 57.6136780],
+            [-20.103654, 57.6933289],
+            [-20.229986, 57.7565002]
+        ];
+
+        L.polygon(latlngs, {opacity: 0.1, fillOpacity: 0, color: 'red'}).addTo(map);
+
+        var horse = L.Marker.movingMarker(
+            latlngs,
+            latlngs.length*5000,
+            {
+                autostart: true,
+                icon: horseIcon,
+                onEnd: function() { this.stop(); this.start(); }
+            }
+        ).addTo(map);
+
+        layercontrol.addOverlay(horse, 'Horse');
+    }
 
     var last_closest = null;
     function movemouse(e) {
@@ -170,6 +214,11 @@
     var all_lines = L.featureGroup().addTo(map);
     var all_routes = L.layerGroup().addTo(map);
     var all_boats = L.featureGroup();
+
+    var horseIcon = L.icon({
+        iconUrl: 'horse-48.png',
+        iconAnchor: [24, 24]
+    });
 
     var boatIcon = L.icon({
         iconUrl: 'boat-48.png',
@@ -297,29 +346,9 @@
     }
 
     if (draw_boats) {
-        layercontrol.addOverlay(all_boats, 'Boats 🤣🤣🤣 (LOL)')
+        layercontrol.addOverlay(all_boats, 'Boats')
     }
 
-
-    var circle = L.geodesic([], {
-			weight:3,
-			opacity:1,
-			color: 'green',
-			steps: 40
-        });
-
-    circle.createCircle(new L.LatLng(-20.2832694, 57.5975875), 2000000).addTo(map);
-/*
-   L.Marker.movingMarker(
-        circle.getLatLngs(),
-        circle.getLatLngs().length*100,
-        {
-            autostart: true,
-            icon: 'horse-48.png',
-            onEnd: function() { this.stop(); this.start(); }
-        }
-    ).addTo(map);
-*/
 </script>
 </body>
 </html>
