@@ -6,33 +6,25 @@
     <meta charset='utf-8'>
 
     <!-- leaflet.js -->
-    <link   rel='stylesheet' href='https://unpkg.com/leaflet@1.2.0/dist/leaflet.css'
-        integrity='sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=='
-        crossorigin=''/>
-    <script   src='https://unpkg.com/leaflet@1.2.0/dist/leaflet.js'
-        integrity='sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=='
-        crossorigin=''></script>
+    <link   rel='stylesheet' href='../res/leaflet/leaflet.css'>
+    <script src='../res/leaflet/leaflet.js'></script>
 
     <!-- Use leaflet-omnivore for the dsv file to GeoJSON conversion -->
-    <script src='leaflet-omnivore.min.js'></script>
+    <script src='../res/leaflet-omnivore.min.js'></script>
 
     <!-- csv2geojson will convert GeoJSON collections of points to linestrings -->
-    <script src='csv2geojson.js'></script>
+    <script src='../res/csv2geojson.js'></script>
 
     <!-- easy access to basemap providers -->
-    <script src='leaflet-providers.min.js'></script>
+    <script src='../res/leaflet-providers.min.js'></script>
 
-    <script src='MovingMarker.js'></script>
+    <script src='../res/MovingMarker.js'></script>
 
-    <script src='Leaflet.Geodesic.js'></script>
+    <script src='../res/Leaflet.Geodesic.js'></script>
 
-    <script src='leaflet.geometryutil.js'></script>
+    <script src='../res/leaflet.geometryutil.js'></script>
 
     <script type='text/javascript' src='simplified_routes.json'></script>
-
-    <!--
-    <script src='leaflet.browser.print.js'></script>
-    -->
 
     <!-- Full window -->
     <style>
@@ -221,13 +213,13 @@
         pointToLayer: function (feature, latlng) {
             if (draw_icons) {
                 var ifile = feature.properties['icon'];
-                var ico = (!ifile || (ifile =='none')) ? 'blue.png' : ifile // default to blue...
+                var ico = (!ifile || (ifile =='none')) ? '../res/leaflet/marker-icon.png' : ifile // default
                 return L.marker(
                     latlng,
                     {
                         icon:L.icon({
                             iconUrl: ico,
-                            shadowUrl: 'shadow.png',
+                            shadowUrl: '../res/leaflet/marker-shadow.png',
                             iconSize: [25,41],
                             shadowSize:   [41, 41],
                             shadowAnchor: [13, 41],
