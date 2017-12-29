@@ -165,7 +165,7 @@
         L.geoJson(null, alfortStyle)
     );
 
-    var alfort_marker = L.marker([48.814208,2.42119]).addTo(map);
+    var alfort_marker = L.marker([48.814208,2.42119]).bindPopup('École nationale vétérinaire d\'Alfort').addTo(map);
    // 48.814208,2.42119
 
     var lyon = omnivore.csv(
@@ -174,7 +174,7 @@
         L.geoJson(null, lyonStyle)
     );
 
-    var lyon_marker = L.marker([45.791197,4.7085428]).addTo(map);
+    var lyon_marker = L.marker([45.791197,4.7085428]).bindPopup('École nationale vétérinaire de Lyon').addTo(map);
 
     // 45.791197,4.7085428
 
