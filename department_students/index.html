@@ -12,13 +12,16 @@
     <script src='../res/leaflet-omnivore.min.js'></script>
 
     <!-- has a csv parser -->
-    <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="../res/d3-collection.min.js" charset="utf-8"></script>
+    <script src="../res/d3-dispatch.min.js" charset="utf-8"></script>
+    <script src="../res/d3-dsv.min.js" charset="utf-8"></script>
+    <script src="../res/d3-request.min.js" charset="utf-8"></script>
 
     <!-- easy access to basemap providers -->
     <script src='../res/leaflet-providers.min.js'></script>
 
     <!-- pie chart markers -->
-    <script src="https://unpkg.com/leaflet.minichart/dist/leaflet.minichart.js" charset="utf-8"></script>
+    <script src="../res/leaflet.minichart.min.js" charset="utf-8"></script>
 
     <!-- Full window -->
     <style>
@@ -29,192 +32,190 @@
 </head>
 <body>
     <div id='map'></div>
-
     <script>
 
-    function change_class_style(classname, which_style, what_value) {
-        var elements = document.getElementsByClassName(classname);
-        for (var i = 0; i < elements.length; i++ ) {
-            elements[i].style[which_style] = what_value;
+function change_class_style(classname, which_style, what_value) {
+    var elements = document.getElementsByClassName(classname);
+    for (var i = 0; i < elements.length; i++ ) {
+        elements[i].style[which_style] = what_value;
+    }
+}
+
+function background_style(event) {
+    if (event.layer._url === '') {
+        change_class_style('leaflet-container', 'background-color', 'rgb(0,0,0)');
+    } else {
+        change_class_style('leaflet-container', 'background-color', 'rgb(177,177,177)');
+    }
+}
+
+function on_activate(e) {
+    if (e.name.includes('pie')) {
+        setTimeout(function() {
+            map.removeLayer(alfort);
+            map.removeLayer(lyon);
+            map.removeLayer(both_circles);
+        }, 10);
+    } else {
+        setTimeout(function() {
+            map.removeLayer(both_pies);
+        }, 10);
+        if (e.layer == both_circles) {
+            both_circles.bringToBack();
         }
     }
+}
 
-    function background_style(event) {
-        if (event.layer._url === '') {
-            change_class_style('leaflet-container', 'background-color', 'rgb(0,0,0)');
-        } else {
-            change_class_style('leaflet-container', 'background-color', 'rgb(177,177,177)');
+function hide_charts(e) {
+    e.layer.eachLayer(
+        function(t) {
+            if (t._chart) { t._chart.remove(); }
         }
+    );
+}
+
+var map = L.map(
+    'map',
+    {
+        scrollWheelZoom: true,
+        zoomDelta: 0.5,
+        zoomSnap: 0.5
     }
+)
+.on('overlayadd', on_activate)
+.on('overlayremove', hide_charts)
+.on('baselayerchange ', background_style);
 
-    function on_activate(e) {
-        if (e.name.includes('pie')) {
-            setTimeout(function() {
-                map.removeLayer(alfort);
-                map.removeLayer(lyon);
-                map.removeLayer(both_circles);
-            }, 10);
-        } else {
-            setTimeout(function() {
-                map.removeLayer(both_pies);
-            }, 10);
-            if (e.layer == both_circles) {
-                both_circles.bringToBack();
-            }
-        }
+
+var baselayers = {
+    'Stamen.TonerLite': L.tileLayer.provider('Stamen.TonerLite'),
+    'Stamen.TonerBackground': L.tileLayer.provider('Stamen.TonerBackground'),
+    'Stamen.TerrainBackground': L.tileLayer.provider('Stamen.TerrainBackground'),
+    'Esri.WorldTerrain': L.tileLayer.provider('Esri.WorldTerrain'),
+    'Esri.WorldGrayCanvas': L.tileLayer.provider('Esri.WorldGrayCanvas'),
+    'CartoDB.DarkMatterNoLabels': L.tileLayer.provider('CartoDB.DarkMatterNoLabels').addTo(map),
+    ' None - Solid Black': L.tileLayer('')
+};
+
+var layercontrol = L.control.layers(baselayers,null,
+    {
+        hideSingleBase: true
     }
+).addTo(map);
 
-    function hide_charts(e) {
-        e.layer.eachLayer(
-            function(t) {
-                if (t._chart) { t._chart.remove(); }
-            }
-        );
-    }
+function format_coords(latlng) {
+    return 'Lat: '+latlng.lat + ', ' + 'Lon: '+ latlng.lng
+}
 
-    var map = L.map(
-        'map',
-        {
-            scrollWheelZoom: true,
-            zoomDelta: 0.5,
-            zoomSnap: 0.5
-        }
-    )
-    .on('overlayadd', on_activate)
-    .on('overlayremove', hide_charts)
-    .on('baselayerchange ', background_style);
+function latlngfunc(feature, layer) {
+    var name = feature.properties['Name'];
+    layer.bindPopup(
+        name + '<br>'
+        + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]) + '<br>'
+        + 'Alfort: ' + feature.properties['Alfort'] + ' , Lyon: ' + feature.properties['Lyon']
+    );
+}
 
-
-    var baselayers = {
-        'Stamen.TonerLite': L.tileLayer.provider('Stamen.TonerLite'),
-        'Stamen.TonerBackground': L.tileLayer.provider('Stamen.TonerBackground'),
-        'Stamen.TerrainBackground': L.tileLayer.provider('Stamen.TerrainBackground'),
-        'Esri.WorldTerrain': L.tileLayer.provider('Esri.WorldTerrain'),
-        'Esri.WorldGrayCanvas': L.tileLayer.provider('Esri.WorldGrayCanvas'),
-        'CartoDB.DarkMatterNoLabels': L.tileLayer.provider('CartoDB.DarkMatterNoLabels').addTo(map),
-        ' None - Solid Black': L.tileLayer('')
-    };
-
-    var layercontrol = L.control.layers(baselayers,null,
-        {
-            hideSingleBase: true,
-        }
-    ).addTo(map);
-
-    function format_coords(latlng) {
-        return 'Lat: '+latlng.lat + ', ' + 'Lon: '+ latlng.lng
-    }
-
-    function latlngfunc(feature, layer) {
-        var name = feature.properties['Name'];
-        layer.bindPopup(
-            name + '<br>'
-            + format_coords(L.GeoJSON.coordsToLatLngs([feature.geometry.coordinates])[0]) + '<br>'
-            + 'Alfort: ' + feature.properties['Alfort'] + ' , Lyon: ' + feature.properties['Lyon']
-        );
-    }
-
-    var alfortStyle = {
-        onEachFeature: latlngfunc,
-        pointToLayer: function(feature, latlng) {
-            if (feature.properties['Alfort'] > 0) {
-                return L.circleMarker(latlng, {
-                    radius: feature.properties['Alfort'],
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.2,
-                    color: 'gold',
-
-                });
-            }
-        }
-    }
-
-    var lyonStyle = {
-        onEachFeature: latlngfunc,
-        pointToLayer: function(feature, latlng) {
-            if (feature.properties['Lyon'] > 0) {
-                return L.circleMarker(latlng, {
-                    radius: feature.properties['Lyon'],
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.2,
-                    color: 'limegreen'
-                });
-            }
-        }
-    }
-
-    var bothStyle = {
-        onEachFeature: latlngfunc,
-        pointToLayer: function(feature, latlng) {
+var alfortStyle = {
+    onEachFeature: latlngfunc,
+    pointToLayer: function(feature, latlng) {
+        if (feature.properties['Alfort'] > 0) {
             return L.circleMarker(latlng, {
-                radius: parseInt(feature.properties['Alfort']) + parseInt(feature.properties['Lyon']),
+                radius: feature.properties['Alfort'],
                 weight: 2,
                 opacity: 1,
                 fillOpacity: 0.2,
-                color: 'cornflowerblue'
+                color: 'gold'
             });
         }
     }
+}
 
-
-    var alfort = omnivore.csv(
-        'students.csv',
-        {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
-        L.geoJson(null, alfortStyle)
-    );
-
-    var alfort_marker = L.marker([48.814208,2.42119]).bindPopup('École nationale vétérinaire d\'Alfort').addTo(map);
-   // 48.814208,2.42119
-
-    var lyon = omnivore.csv(
-        'students.csv',
-        {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
-        L.geoJson(null, lyonStyle)
-    );
-
-    var lyon_marker = L.marker([45.791197,4.7085428]).bindPopup('École nationale vétérinaire de Lyon').addTo(map);
-
-    // 45.791197,4.7085428
-
-    var both_circles = omnivore.csv(
-        'students.csv',
-        {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
-        L.geoJson(null, bothStyle)
-    ).on('ready', function() {
-            map.fitBounds(this.getBounds());
+var lyonStyle = {
+    onEachFeature: latlngfunc,
+    pointToLayer: function(feature, latlng) {
+        if (feature.properties['Lyon'] > 0) {
+            return L.circleMarker(latlng, {
+                radius: feature.properties['Lyon'],
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.2,
+                color: 'limegreen'
+            });
         }
-    );
+    }
+}
+
+var bothStyle = {
+    onEachFeature: latlngfunc,
+    pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+            radius: parseInt(feature.properties['Alfort']) + parseInt(feature.properties['Lyon']),
+            weight: 2,
+            opacity: 1,
+            fillOpacity: 0.2,
+            color: 'cornflowerblue'
+        });
+    }
+}
 
 
-    var both_pies = L.layerGroup().addTo(map);
+var alfort = omnivore.csv(
+    'students.csv',
+    {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
+    L.geoJson(null, alfortStyle)
+);
 
-    d3.csv('students.csv', function (error, data) {
-        for (var i = 0; i < data.length; i++) {
-            var feature = data[i];
-            L.minichart([feature['Latitude'], feature['Longitude']], {
-                type: 'pie',
-                data: [feature['Alfort'], feature['Lyon']],
-                colors: ['gold', 'limegreen'],
-                labels: 'auto',
-                width: 2*(parseInt(feature['Alfort']) + parseInt(feature['Lyon'])),
-                transitionTime: 0
-            })
-            .bindPopup(
-                feature['Name'] + '<br>'
-                + format_coords(L.latLng([feature['Latitude'], feature['Longitude']])) + '<br>'
-                + 'Alfort: ' + feature['Alfort'] + ' , Lyon: ' + feature['Lyon']
-            )
-            .addTo(both_pies);
-        }
-    });
+var alfort_marker = L.marker([48.814208,2.42119]).bindPopup('École nationale vétérinaire d\'Alfort').addTo(map);
+// 48.814208,2.42119
 
-    layercontrol.addOverlay(alfort, 'Alfort Students');
-    layercontrol.addOverlay(lyon, 'Lyon Students');
-    layercontrol.addOverlay(both_circles, 'Students at Both (circles)');
-    layercontrol.addOverlay(both_pies, 'Students at Both (pies)');
+var lyon = omnivore.csv(
+    'students.csv',
+    {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
+    L.geoJson(null, lyonStyle)
+);
 
-</script>
+var lyon_marker = L.marker([45.791197,4.7085428]).bindPopup('École nationale vétérinaire de Lyon').addTo(map);
+
+// 45.791197,4.7085428
+
+var both_circles = omnivore.csv(
+    'students.csv',
+    {latfield: 'Latitude', lonfield: 'Longitude', delimiter: ','},
+    L.geoJson(null, bothStyle)
+).on('ready', function() {
+        map.fitBounds(this.getBounds());
+    }
+);
+
+
+var both_pies = L.layerGroup().addTo(map);
+
+d3.csv('students.csv', function (error, data) {
+    for (var i = 0; i < data.length; i++) {
+        var feature = data[i];
+        L.minichart([feature['Latitude'], feature['Longitude']], {
+            type: 'pie',
+            data: [feature['Alfort'], feature['Lyon']],
+            colors: ['gold', 'limegreen'],
+            labels: 'auto',
+            width: 2*(parseInt(feature['Alfort']) + parseInt(feature['Lyon'])),
+            transitionTime: 0
+        })
+        .bindPopup(
+            feature['Name'] + '<br>'
+            + format_coords(L.latLng([feature['Latitude'], feature['Longitude']])) + '<br>'
+            + 'Alfort: ' + feature['Alfort'] + ' , Lyon: ' + feature['Lyon']
+        )
+        .addTo(both_pies);
+    }
+});
+
+layercontrol.addOverlay(alfort, 'Alfort Students');
+layercontrol.addOverlay(lyon, 'Lyon Students');
+layercontrol.addOverlay(both_circles, 'Students at Both (circles)');
+layercontrol.addOverlay(both_pies, 'Students at Both (pies)');
+
+    </script>
 </body>
 </html>
