@@ -1,3 +1,7 @@
-https://fiendish.github.io/history_map/explorers/
+<a href="https://fiendish.github.io/history_map/explorers/"><img src="res/explorers.png"><br>
+https://fiendish.github.io/history_map/explorers/</a>
 
-https://fiendish.github.io/history_map/department_students/
+<hr width="80%">
+
+<a href="https://fiendish.github.io/history_map/department_students/"><img src="res/department_students.png"><br>
+https://fiendish.github.io/history_map/explorers/</a>
