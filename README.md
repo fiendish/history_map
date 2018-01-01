@@ -1,3 +1,5 @@
+Visual representations of historical data gathered for Kit's dissertation.
+
 <a href="https://fiendish.github.io/history_map/explorers/"><img src="res/explorers.png"><br>
 https://fiendish.github.io/history_map/explorers/</a>
 
