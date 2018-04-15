@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Observations Sommaires</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta charset='utf-8'>
+
+    <link   rel='stylesheet' href='../res/leaflet/leaflet.css'>
+    <script src='../res/leaflet/leaflet.js'></script>
+
+    <!-- csv file to GeoJSON conversion -->
+    <script src='../res/leaflet-omnivore.min.js'></script>
+
+    <!-- has a csv parser -->
+    <script src="../res/d3-collection.min.js" charset="utf-8"></script>
+    <script src="../res/d3-dispatch.min.js" charset="utf-8"></script>
+    <script src="../res/d3-dsv.min.js" charset="utf-8"></script>
+    <script src="../res/d3-request.min.js" charset="utf-8"></script>
+
+    <!-- easy access to basemap providers -->
+    <script src='../res/leaflet-providers.min.js'></script>
+
+    <!-- pie chart markers -->
+    <script src="../res/leaflet.minichart.min.js" charset="utf-8"></script>
+
+    <!-- Full window -->
+    <style>
+        body { margin:0; padding:0; }
+        #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+        .leaflet-control-layers-expanded .leaflet-control-layers-list { font-size: 14pt }
+    </style>
+</head>
+<body>
+    <style>
+    .my-icon {
+      border-radius: 100%;
+      width: 20px;
+      height: 20px;
+      text-align: center;
+      line-height: 20px;
+      font-size: 24pt;
+    }
+    </style>
+
+    <div id='map'></div>
+    <script>
+
+function change_class_style(classname, which_style, what_value) {
+    var elements = document.getElementsByClassName(classname);
+    for (var i = 0; i < elements.length; i++ ) {
+        elements[i].style[which_style] = what_value;
+    }
+}
+
+function background_style(event) {
+    if (event.layer._url === '') {
+        change_class_style('leaflet-container', 'background-color', 'rgb(0,0,0)');
+    } else {
+        change_class_style('leaflet-container', 'background-color', 'rgb(177,177,177)');
+    }
+}
+
+var map = L.map(
+    'map',
+    {
+        scrollWheelZoom: true,
+        zoomDelta: 0.5,
+        zoomSnap: 0.5
+    }
+)
+.on('baselayerchange ', background_style);
+
+var baselayers = {
+    'Stamen.TonerLite': L.tileLayer.provider('Stamen.TonerLite'),
+    'Stamen.TonerBackground': L.tileLayer.provider('Stamen.TonerBackground'),
+    'Stamen.TerrainBackground': L.tileLayer.provider('Stamen.TerrainBackground'),
+    'Esri.WorldTerrain': L.tileLayer.provider('Esri.WorldTerrain'),
+    'Esri.WorldGrayCanvas': L.tileLayer.provider('Esri.WorldGrayCanvas').addTo(map),
+    'CartoDB.DarkMatterNoLabels': L.tileLayer.provider('CartoDB.DarkMatterNoLabels'),
+    ' None - Solid Black': L.tileLayer('')
+};
+
+var layercontrol = L.control.layers(baselayers,null,
+    {
+        hideSingleBase: true
+    }
+).addTo(map);
+
+var myIcon = {
+    className: 'my-icon', // class name to style
+    iconSize: null // size of icon, use null to set the size in CSS
+}
+
+var cow = Object.assign({}, myIcon);
+cow.html = '🐄';
+
+var horse = Object.assign({}, myIcon);
+horse.html = '🐎';
+
+var sheep = Object.assign({}, myIcon);
+sheep.html = '🐑';
+
+var pig = Object.assign({}, myIcon);
+pig.html = '🐖';
+
+var goose = Object.assign({}, myIcon);
+goose.html = '🦆';
+
+var bounds = new L.latLngBounds([]);
+
+var cowlayer = omnivore.csv('cows.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'})
+    .on('ready', function(layer) {
+        this.eachLayer(function(marker) {
+            marker.setIcon(L.divIcon(cow));
+            marker.bindPopup(marker.toGeoJSON().properties.date + ', ' + marker.toGeoJSON().properties.animals);
+        });
+        bounds.extend(this.getBounds());
+        map.fitBounds(bounds,  {padding: L.point(50, 50)});
+    })
+    .addTo(map);
+
+var piglayer = omnivore.csv('pigs.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'})
+    .on('ready', function(layer) {
+        this.eachLayer(function(marker) {
+            marker.setIcon(L.divIcon(pig));
+            marker.bindPopup(marker.toGeoJSON().properties.date + ', ' + marker.toGeoJSON().properties.animals);
+        });
+        bounds.extend(this.getBounds());
+        map.fitBounds(bounds,  {padding: L.point(50, 50)});
+    })
+    .addTo(map);
+
+var sheeplayer = omnivore.csv('sheep.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'})
+    .on('ready', function(layer) {
+        this.eachLayer(function(marker) {
+            marker.setIcon(L.divIcon(sheep));
+            marker.bindPopup(marker.toGeoJSON().properties.date + ', ' + marker.toGeoJSON().properties.animals);
+        });
+        bounds.extend(this.getBounds());
+        map.fitBounds(bounds,  {padding: L.point(50, 50)});
+    })
+    .addTo(map);
+
+var horselayer = omnivore.csv('horses.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'})
+    .on('ready', function(layer) {
+        this.eachLayer(function(marker) {
+            marker.setIcon(L.divIcon(horse));
+            marker.bindPopup(marker.toGeoJSON().properties.date + ', ' + marker.toGeoJSON().properties.animals);
+        });
+        bounds.extend(this.getBounds());
+        map.fitBounds(bounds,  {padding: L.point(50, 50)});
+    })
+    .addTo(map);
+
+var geeselayer = omnivore.csv('geese.csv', {latfield: 'latitude', lonfield: 'longitude', delimiter: ';'})
+    .on('ready', function(layer) {
+        this.eachLayer(function(marker) {
+            marker.setIcon(L.divIcon(goose));
+            marker.bindPopup(marker.toGeoJSON().properties.date + ', ' + marker.toGeoJSON().properties.animals);
+        });
+        bounds.extend(this.getBounds());
+        map.fitBounds(bounds,  {padding: L.point(50, 50)});
+    })
+    .addTo(map);
+
+layercontrol.addOverlay(cowlayer, 'Cows');
+layercontrol.addOverlay(horselayer, 'Horses');
+layercontrol.addOverlay(sheeplayer, 'Sheep');
+layercontrol.addOverlay(piglayer, 'Pigs');
+layercontrol.addOverlay(geeselayer, 'Geese');
+
+    </script>
+</body>
+</html>
