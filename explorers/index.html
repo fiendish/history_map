@@ -25,6 +25,7 @@
     <script src='../res/leaflet.geometryutil.min.js'></script>
 
     <script type='text/javascript' src='simplified_routes.json'></script>
+    <script src='../res/leaflet-easyPrint.js'></script>
 
     <!-- Full window -->
     <style>
@@ -161,8 +162,6 @@
             last_closest.openPopup();
         }
     }
-
-    //L.browserPrint().addTo(map);
 
     var baselayers = {
  //       'Stamen.Watercolor': L.tileLayer.provider('Stamen.Watercolor'),
@@ -409,6 +408,15 @@
     if (draw_boats) {
         layercontrol.addOverlay(all_boats, 'Boats')
     }
+
+    var printer = L.easyPrint({
+        // tileLayer: tiles,
+        sizeModes: ['Current', 'A4Landscape', 'A4Portrait'],
+        filename: 'myMap',
+        exportOnly: true,
+        hideControlContainer: true
+    }).addTo(map);
+    
 
 </script>
 </body>
